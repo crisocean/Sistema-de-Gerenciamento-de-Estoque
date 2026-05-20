@@ -23,7 +23,7 @@ db_config = {
 def consulta_produtos():
     conn = None
     try:
-        conn = psycopg2.connect(**conn)
+        conn = psycopg2.connect(**db_config)
         
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
             query_sql = "SELECT id_produto, nome_produto, preco_venda FROM produtos;"
