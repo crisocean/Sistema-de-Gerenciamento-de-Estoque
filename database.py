@@ -20,18 +20,18 @@ db_config = {
     "password": "12344321"
 }
 
-def consulta_produtos():
+def execute_query(query: str, params: tuple = None):
     conn = None
     try:
         conn = psycopg2.connect(**db_config)
         
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
-            query_sql = "SELECT id_produto, nome_produto, preco_venda FROM produtos;"
-            cur.execute(query_sql)
-            resultados = cur.fetchall()
-            print("Resultados da consulta:")
-            for linha in resultados:
-                return resultados
+            cur.execute(query, params)
+            if query.strip().upper().startswith(("INSERT","UPDATE","DELETE")):
+                conn.commit()
+                return {"status": "sucesso"}
+            return cur.fetchall()
+
 
     except Exception as erro:
         logging.error(f"Erro ao acessar o banco de dados: {erro}", exc_info=True)
