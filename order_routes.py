@@ -1,17 +1,17 @@
 from fastapi import APIRouter
 from database import execute_query
 from pydantic import BaseModel
+from fastapi import HTTPException
 order_router = APIRouter(prefix="/orders", tags=["produtos"])
 
 class ProdutoNovo (BaseModel):
-    id_categoria : int
-    nome_produto : str
-    descricao : str
-    marca : str
-    preco_venda : float
-    preco_produto : float
-    status_produto : str
-    data_cadastro : str
+    id_categoria: int
+    nome_produto: str
+    descricao: str
+    marca: str
+    preco_venda: float
+    preco_produto: float
+    status_produto: str
     
 @order_router.get("/")  
 def listar_produtos():
@@ -28,12 +28,13 @@ def BuscarProduto_PorId(id_produto : int):
     """
     sql = "SELECT id_produto, nome_produto, preco_venda FROM produtos WHERE id_produto = %s;"
     produto_encontrado = execute_query(sql,(id_produto,))
+    if not produto_encontrado:
+        raise HTTPException(status_code=404, detail="Produto não encontrado")
     
     return{
-        "status" : "sucessso",
+        "status" : "sucesso",
         "produto" : produto_encontrado
     }
-    
 
 @order_router.post("/")
 def criar_produtos(produto : ProdutoNovo):
@@ -44,7 +45,7 @@ def criar_produtos(produto : ProdutoNovo):
         ) VALUES (%s, %s, %s, %s, %s, %s, %s);
     """
     
-    valores = valores = (
+    valores = (
         produto.id_categoria, 
         produto.nome_produto, 
         produto.descricao, 
@@ -66,7 +67,7 @@ def atualizar_produto(id_produto : int, produto : ProdutoNovo): #define os param
     sql = """
         UPDATE produtos 
         SET id_categoria = %s, nome_produto = %s, descricao = %s, 
-            marca = %s, preco_venda = %s, preco_produto = %s, status_produto = %s
+        marca = %s, preco_venda = %s, preco_produto = %s, status_produto = %s
         WHERE id_produto = %s;
     """
     
@@ -86,4 +87,20 @@ def atualizar_produto(id_produto : int, produto : ProdutoNovo): #define os param
     return{
         "status" : "sucesso",
         "mensagem" : f"Produto {produto.nome_produto} foi atualizado com sucesso"
+    }
+    
+@order_router.delete("/{id_produto}")
+def deletar_produto (id_produto : int):
+    sql = """ 
+    UPDATE produtos 
+    SET status_produto = 'indisponivel' 
+    WHERE id_produto = %s;
+    """
+    # Apenas o id_produto da URL é necessário.
+    valores = (id_produto,)
+    
+    execute_query(sql,valores)
+    return{
+        "status" : "sucesso",
+        "mensagem" : f"Produto com ID {id_produto} foi desativado com sucesso"
     }
