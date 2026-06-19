@@ -27,7 +27,14 @@ def execute_query(query: str, params: tuple = None):
         
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute(query, params)
-            if query.strip().upper().startswith(("INSERT","UPDATE","DELETE")):
+            comando = query.strip().upper()
+            if comando.startswith(("INSERT", "UPDATE", "DELETE")):
+                # Se a query usa RETURNING, o comando ainda precisa
+                # devolver as linhas alteradas antes do commit fechar a transação.
+                if "RETURNING" in comando:
+                    resultado = cur.fetchall()
+                    conn.commit()
+                    return resultado
                 conn.commit()
                 return {"status": "sucesso"}
             return cur.fetchall()
