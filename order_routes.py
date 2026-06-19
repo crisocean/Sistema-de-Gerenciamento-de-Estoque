@@ -2,6 +2,8 @@ from fastapi import APIRouter
 from database import execute_query
 from pydantic import BaseModel
 from fastapi import HTTPException
+from typing import Optional
+
 order_router = APIRouter(prefix="/orders", tags=["produtos"])
 
 class ProdutoNovo (BaseModel):
@@ -12,6 +14,7 @@ class ProdutoNovo (BaseModel):
     preco_venda: float
     preco_produto: float
     status_produto: str
+    
     
 @order_router.get("/")  
 def listar_produtos():
@@ -104,3 +107,5 @@ def deletar_produto (id_produto : int):
         "status" : "sucesso",
         "mensagem" : f"Produto com ID {id_produto} foi desativado com sucesso"
     }
+    
+
