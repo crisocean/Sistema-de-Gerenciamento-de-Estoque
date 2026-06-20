@@ -81,15 +81,25 @@ def listar_estoque_por_produto(id_produto: int):
 
 @estoque_router.put("/{id_estoque}/entrada")
 def registrar_entrada(id_estoque: int, movimento: MovimentoEstoque):
-    """Entrada de mercadoria: soma a quantidade recebida ao saldo atual.
-    Não tem restrição de saldo — entrada sempre é permitida."""
-    sql = """
-        UPDATE estoque
-        SET quantidade = quantidade + %s, ultima_atualizacao = CURRENT_TIMESTAMP
-        WHERE id_estoque = %s
-        RETURNING id_estoque, quantidade;
     """
-    resultado = execute_query(sql, (movimento.quantidade, id_estoque))
+    Entrada de mercadoria: soma a quantidade recebida ao saldo atual e
+    grava o histórico na MESMA instrução (CTE de escrita). Assim, saldo
+    e log nunca ficam dessincronizados — ou os dois são salvos, ou nenhum.
+    """
+    sql = """
+        WITH atualizacao AS (
+            UPDATE estoque
+            SET quantidade = quantidade + %s, ultima_atualizacao = CURRENT_TIMESTAMP
+            WHERE id_estoque = %s
+            RETURNING id_estoque, quantidade AS saldo_novo
+        )
+        INSERT INTO movimentacoes_estoque (id_estoque, tipo_movimento, quantidade, saldo_anterior, saldo_novo)
+        SELECT id_estoque, 'entrada', %s, saldo_novo - %s, saldo_novo
+        FROM atualizacao
+        RETURNING id_estoque, saldo_anterior, saldo_novo;
+    """
+    valores = (movimento.quantidade, id_estoque, movimento.quantidade, movimento.quantidade)
+    resultado = execute_query(sql, valores)
 
     if not resultado:
         raise HTTPException(status_code=404, detail="Registro de estoque não encontrado.")
@@ -97,28 +107,33 @@ def registrar_entrada(id_estoque: int, movimento: MovimentoEstoque):
     return {
         "status": "sucesso",
         "mensagem": "Entrada registrada com sucesso.",
-        "saldo_atual": resultado[0]["quantidade"],
+        "saldo_atual": resultado[0]["saldo_novo"],
     }
 
 
 @estoque_router.put("/{id_estoque}/saida")
 def registrar_saida(id_estoque: int, movimento: MovimentoEstoque):
     """
-    Saída de mercadoria: subtrai do saldo atual.
-
-    A trava de segurança está na cláusula WHERE: "quantidade >= %s" só
-    deixa a atualização acontecer se houver saldo suficiente. Se falhar,
-    nenhuma linha é alterada e o RETURNING vem vazio — assim detectamos
-    saldo insuficiente sem precisar de um SELECT antes (o que abriria
-    brecha para condição de corrida entre requisições simultâneas).
+    Saída de mercadoria: subtrai do saldo atual e grava o histórico na
+    mesma instrução. A trava de saldo continua na cláusula WHERE do
+    UPDATE ("quantidade >= %s"): se ela não encontrar linha, o CTE não
+    produz resultado, e o INSERT do histórico (que depende dele) também
+    não executa — update e log vivem ou morrem juntos.
     """
     sql = """
-        UPDATE estoque
-        SET quantidade = quantidade - %s, ultima_atualizacao = CURRENT_TIMESTAMP
-        WHERE id_estoque = %s AND quantidade >= %s
-        RETURNING id_estoque, quantidade;
+        WITH atualizacao AS (
+            UPDATE estoque
+            SET quantidade = quantidade - %s, ultima_atualizacao = CURRENT_TIMESTAMP
+            WHERE id_estoque = %s AND quantidade >= %s
+            RETURNING id_estoque, quantidade AS saldo_novo
+        )
+        INSERT INTO movimentacoes_estoque (id_estoque, tipo_movimento, quantidade, saldo_anterior, saldo_novo)
+        SELECT id_estoque, 'saida', %s, saldo_novo + %s, saldo_novo
+        FROM atualizacao
+        RETURNING id_estoque, saldo_anterior, saldo_novo;
     """
-    resultado = execute_query(sql, (movimento.quantidade, id_estoque, movimento.quantidade))
+    valores = (movimento.quantidade, id_estoque, movimento.quantidade, movimento.quantidade, movimento.quantidade)
+    resultado = execute_query(sql, valores)
 
     if not resultado:
         # Pode ser ID inexistente OU saldo insuficiente — checamos qual dos
@@ -134,5 +149,5 @@ def registrar_saida(id_estoque: int, movimento: MovimentoEstoque):
     return {
         "status": "sucesso",
         "mensagem": "Saída registrada com sucesso.",
-        "saldo_atual": resultado[0]["quantidade"],
+        "saldo_atual": resultado[0]["saldo_novo"],
     }
