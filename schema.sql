@@ -25,7 +25,7 @@ id_usuario serial primary key,
 id_lojas integer references lojas(id_loja) on delete set null,
 nome_usuario varchar(100) not null,
 email varchar(150) unique not null,
-senha_usuario varchar(50) not null,
+senha_usuario varchar(255) not null,
 nivel_acesso integer not null default 1,
 status_usuario status_usuario default 'ativo' not null,
 ultimo_login timestamp);
