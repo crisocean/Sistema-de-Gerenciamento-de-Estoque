@@ -55,3 +55,13 @@ quantidade_minima INTEGER NOT NULL DEFAULT 0 CHECK (quantidade_minima >= 0),
 ultima_atualizacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,
 CONSTRAINT unique_produto_por_loja UNIQUE (id_loja, id_produto)
 );
+
+CREATE TABLE movimentacoes_estoque (
+    id_movimentacao SERIAL PRIMARY KEY,
+    id_estoque INTEGER NOT NULL REFERENCES estoque(id_estoque),
+    tipo_movimento VARCHAR(10) CHECK (tipo_movimento IN ('entrada', 'saida')) NOT NULL,
+    quantidade INTEGER NOT NULL CHECK (quantidade > 0),
+    saldo_anterior INTEGER NOT NULL,
+    saldo_novo INTEGER NOT NULL,
+    data_hora TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
