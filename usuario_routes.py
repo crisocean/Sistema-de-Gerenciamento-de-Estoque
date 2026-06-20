@@ -72,7 +72,13 @@ def fazer_login(login_data: LoginData):
     if not senha_correta:
         raise HTTPException(status_code=401, detail="Email ou senha incorretos")
 
-    # 3. Senha bateu — gera o JWT
+    # 3. Senha bateu — registra o momento do login
+    execute_query(
+        "UPDATE usuarios SET ultimo_login = CURRENT_TIMESTAMP WHERE id_usuario = %s;",
+        (usuario["id_usuario"],)
+    )
+
+    # 4. Gera o JWT
     dados_cracha = {
         "sub": str(usuario["id_usuario"]),
         "nivel_acesso": usuario["nivel_acesso"],
