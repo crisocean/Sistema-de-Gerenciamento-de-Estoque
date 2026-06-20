@@ -1,7 +1,8 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from typing import Optional
 from database import execute_query  # Importa o seu executor de banco
+from auth_dependencies import get_usuario_atual
 
 # Aqui está o segredo: um prefixo limpo e exclusivo para as lojas
 loja_router = APIRouter(prefix="/lojas", tags=["lojas"])
@@ -16,7 +17,7 @@ class LojaNova(BaseModel):
     status_loja: str = "ativa"
 
 @loja_router.post("/")
-def criar_loja(loja: LojaNova):
+def criar_loja(loja: LojaNova, usuario_atual: dict = Depends(get_usuario_atual)):
     sql = """
         INSERT INTO lojas (
             id_empresa, nome_loja, endereco_loja, cidade, estado, telefone, status_loja
@@ -41,7 +42,7 @@ def listar_lojas():
     return {"status": "sucesso", "lojas": lojas_listadas}
 
 @loja_router.put("/{id_loja}")
-def atualizar_loja(id_loja: int, loja: LojaNova):
+def atualizar_loja(id_loja: int, loja: LojaNova, usuario_atual: dict = Depends(get_usuario_atual)):
     sql = """
         UPDATE lojas
         SET id_empresa = %s, nome_loja = %s, endereco_loja = %s,
@@ -57,8 +58,7 @@ def atualizar_loja(id_loja: int, loja: LojaNova):
     return {"status": "sucesso", "mensagem": f"Loja {loja.nome_loja} atualizada com sucesso"}
     
 @loja_router.delete("/{id_loja}")
-def inativar_loja(id_loja: int):
+def inativar_loja(id_loja: int, usuario_atual: dict = Depends(get_usuario_atual)):
     sql = "UPDATE lojas SET status_loja = 'inativa' WHERE id_loja = %s;"
     execute_query(sql, (id_loja,))
     return {"status": "sucesso", "mensagem": f"Loja com ID {id_loja} foi inativada com sucesso"}
-    

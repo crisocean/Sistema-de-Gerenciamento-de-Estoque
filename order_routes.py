@@ -1,8 +1,9 @@
 from fastapi import APIRouter
 from database import execute_query
 from pydantic import BaseModel
-from fastapi import HTTPException
+from fastapi import HTTPException, Depends
 from typing import Optional
+from auth_dependencies import get_usuario_atual
 
 order_router = APIRouter(prefix="/orders", tags=["produtos"])
 
@@ -40,7 +41,7 @@ def BuscarProduto_PorId(id_produto : int):
     }
 
 @order_router.post("/")
-def criar_produtos(produto : ProdutoNovo):
+def criar_produtos(produto : ProdutoNovo, usuario_atual: dict = Depends(get_usuario_atual)):
     sql = """
         INSERT INTO produtos (
             id_categoria, nome_produto, descricao, marca, 
@@ -66,7 +67,7 @@ def criar_produtos(produto : ProdutoNovo):
     }
 #rota de atualização de produto
 @order_router.put("/{id_produto}") #recebe o id do produto para a alteração
-def atualizar_produto(id_produto : int, produto : ProdutoNovo): #define os parametros, id do produto e os atributos do produto na classe
+def atualizar_produto(id_produto : int, produto : ProdutoNovo, usuario_atual: dict = Depends(get_usuario_atual)): #define os parametros, id do produto e os atributos do produto na classe
     sql = """
         UPDATE produtos 
         SET id_categoria = %s, nome_produto = %s, descricao = %s, 
@@ -93,7 +94,7 @@ def atualizar_produto(id_produto : int, produto : ProdutoNovo): #define os param
     }
     
 @order_router.delete("/{id_produto}")
-def deletar_produto (id_produto : int):
+def deletar_produto (id_produto : int, usuario_atual: dict = Depends(get_usuario_atual)):
     sql = """ 
     UPDATE produtos 
     SET status_produto = 'indisponivel' 
@@ -107,5 +108,3 @@ def deletar_produto (id_produto : int):
         "status" : "sucesso",
         "mensagem" : f"Produto com ID {id_produto} foi desativado com sucesso"
     }
-    
-

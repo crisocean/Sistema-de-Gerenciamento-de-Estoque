@@ -1,6 +1,7 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel, Field
 from database import execute_query
+from auth_dependencies import get_usuario_atual
 
 # Mesmo padrão de prefixo isolado já usado em lojas_router.py
 estoque_router = APIRouter(prefix="/estoque", tags=["estoque"])
@@ -21,7 +22,7 @@ class MovimentoEstoque(BaseModel):
 
 
 @estoque_router.post("/")
-def criar_estoque(estoque: EstoqueNovo):
+def criar_estoque(estoque: EstoqueNovo, usuario_atual: dict = Depends(get_usuario_atual)):
     """
     Cria o vínculo inicial entre um produto e uma loja.
     A constraint UNIQUE (id_loja, id_produto) do banco impede duplicidade;
@@ -80,7 +81,7 @@ def listar_estoque_por_produto(id_produto: int):
 
 
 @estoque_router.put("/{id_estoque}/entrada")
-def registrar_entrada(id_estoque: int, movimento: MovimentoEstoque):
+def registrar_entrada(id_estoque: int, movimento: MovimentoEstoque, usuario_atual: dict = Depends(get_usuario_atual)):
     """
     Entrada de mercadoria: soma a quantidade recebida ao saldo atual e
     grava o histórico na MESMA instrução (CTE de escrita). Assim, saldo
@@ -112,7 +113,7 @@ def registrar_entrada(id_estoque: int, movimento: MovimentoEstoque):
 
 
 @estoque_router.put("/{id_estoque}/saida")
-def registrar_saida(id_estoque: int, movimento: MovimentoEstoque):
+def registrar_saida(id_estoque: int, movimento: MovimentoEstoque, usuario_atual: dict = Depends(get_usuario_atual)):
     """
     Saída de mercadoria: subtrai do saldo atual e grava o histórico na
     mesma instrução. A trava de saldo continua na cláusula WHERE do
